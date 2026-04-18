@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sensei_client"
+version = "0.3.0"
+description = "Venture-agnostic Python client for the SENSEI escalation-intelligence service (contract v0.3)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Proprietary" }
+authors = [
+    { name = "M1" },
+]
+keywords = ["sensei", "escalation", "materiality", "advisor", "m1"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "httpx>=0.24",
+]
+
+[project.optional-dependencies]
+# Installed when a venture will invoke the Advisor model.
+advisor = ["anthropic>=0.34"]
+
+# Dev-time tooling for contributors to sensei_client itself.
+dev = [
+    "pytest>=7",
+    "pytest-asyncio>=0.21",
+]
+
+[project.urls]
+Contract = "file:./contract/SENSEI_Contract_v0.3.md"
+Advisory = "file:./advisories/SENSEI_v0.3_advisory.md"
+IntegrationGuide = "file:./sensei_client/INTEGRATION.md"
+
+[tool.hatch.build.targets.wheel]
+# The workspace root is not a conventional `src/`-layout, so we point
+# hatch at the package directory directly.
+packages = ["sensei_client"]

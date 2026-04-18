@@ -1,0 +1,126 @@
+{
+  "adapter_id": "herald.v1",
+  "contract_version": "0.3-proposed",
+  "hard_task_registry": [
+    {
+      "id": "source_reliability_uncertain",
+      "description": "Worker flagged upstream source as unreliable, unverified, or of unknown provenance. Every downstream consumer inherits the uncertainty, so this is load-bearing in a data-hub.",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "source reliability uncertain",
+          "source reliability unknown",
+          "upstream unreliable",
+          "provenance unclear",
+          "provenance unknown",
+          "unverified source",
+          "source not canonical"
+        ]
+      },
+      "base_weight": 0.80,
+      "materiality_boost": 0.25
+    },
+    {
+      "id": "pipeline_anomaly",
+      "description": "Ingestion or transformation anomaly: unexpected schema, field mismatch, null-rate spike, outlier distribution, or contract drift.",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "anomaly detected",
+          "schema drift",
+          "unexpected schema",
+          "field mismatch",
+          "contract violation",
+          "null rate spike",
+          "distribution shift",
+          "outlier detected"
+        ]
+      },
+      "base_weight": 0.75,
+      "materiality_boost": 0.20
+    },
+    {
+      "id": "destructive_operation",
+      "description": "Worker output references a destructive verb. Covers SQL-style (DROP, TRUNCATE, DELETE FROM, PURGE, OVERWRITE) and stream-level (TOMBSTONE, COMPACT, EXPIRE, DEAD-LETTER) operations. Irreversible operations are hard-tasks regardless of Worker confidence.",
+      "matcher": {
+        "type": "regex",
+        "patterns": [
+          "\\b(?:drop|truncate|purge|overwrite)\\b",
+          "\\bdelete\\s+from\\b",
+          "\\brm\\s+-rf\\b",
+          "\\b(?:tombstone|compact|expire)\\b",
+          "\\bdead[-\\s]?letter\\b"
+        ]
+      },
+      "base_weight": 0.95,
+      "materiality_boost": 0.40
+    },
+    {
+      "id": "cross_boundary_write",
+      "description": "Data moves outside the hub's trust boundary: external sink, third-party destination, cross-tenant write, egress, or fan-out to downstream consumers (broadcast, fanout, publish).",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "external sink",
+          "third-party destination",
+          "cross-tenant",
+          "egress to",
+          "export to external",
+          "push to vendor",
+          "publish to downstream",
+          "fan out to consumers",
+          "broadcast",
+          "fanout",
+          "fan-out"
+        ]
+      },
+      "base_weight": 0.85,
+      "materiality_boost": 0.35
+    },
+    {
+      "id": "classified_data_touched",
+      "description": "Worker output references PII, PCI, PHI, MNPI, or other regulated data classes. Stakes rise sharply: downstream harm includes legal exposure, not just data correctness.",
+      "matcher": {
+        "type": "regex",
+        "patterns": [
+          "\\b(?:PII|PCI|PHI|MNPI|SSN|HIPAA|GDPR|CCPA)\\b",
+          "\\bcredit\\s*card\\s*(?:number|data)\\b",
+          "\\b(?:sensitive|regulated)\\s+(?:data|field|column)\\b"
+        ]
+      },
+      "base_weight": 0.90,
+      "materiality_boost": 0.40
+    },
+    {
+      "id": "low_confidence_structured_output",
+      "description": "Worker emitted a structured envelope whose self-reported confidence is low and/or whose warnings list is non-empty. Only fires for post-Pusher-migration Workers that emit {operation, confidence, warnings, target} envelopes.",
+      "matcher": {
+        "type": "structural",
+        "schema": {
+          "required_fields": ["confidence", "warnings"]
+        }
+      },
+      "base_weight": 0.70,
+      "materiality_boost": 0.15
+    },
+    {
+      "id": "high_volume_operation",
+      "description": "Worker references operating on a large item count (six digits or more). Covers both batch-ETL vocabulary (rows, records, entries, documents) and hub-native vocabulary (events, messages, alerts, transactions).",
+      "matcher": {
+        "type": "regex",
+        "patterns": [
+          "\\b\\d{6,}\\s*(?:rows?|records?|entries|documents?|events?|messages?|alerts?|transactions?)\\b"
+        ]
+      },
+      "base_weight": 0.55,
+      "materiality_boost": 0.30
+    }
+  ],
+  "trigger_threshold": 0.35,
+  "trigger_budget_tokens": 512,
+  "composition_strategy": "weighted_sum",
+  "materiality_floor": 0.0,
+  "advisor_model": "claude-opus-4-7",
+  "advisor_per_session_cap": 4,
+  "advisor_prompt_template": "You are a senior data integrity specialist reviewing a task that HERALD's Worker model has escalated. HERALD is a data-hub: it ingests, transforms, and distributes data across many downstream consumers, so a wrong call here is hard to unwind.\n\nYou will receive the Worker's output and the signals that fired. Decide whether the proposed operation is safe to proceed with, needs modification, or must be stopped. Prioritize: (1) reversibility, (2) trust-boundary integrity, (3) regulated-data handling, (4) upstream source reliability — in that order.\n\nEnd your response with exactly one verdict token on its own line — APPROVE, REJECT, or ESCALATE — followed by a reasoning paragraph. ESCALATE means 'a human must look at this before it ships.'"
+}
