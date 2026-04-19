@@ -32,9 +32,17 @@ Initial analytical pass: no clauses required amendment; no fields needed additio
 
 `sensei_client/types.py` in v0.3.1 made three of the four contract-required confidence fields `Optional[float] = None` and silently omitted them from the `/decide` wire payload when the caller didn't supply them. Contract v0.3 §3 (`SENSEI_Contract_v0.3.md` lines 120–123) specifies all four as required floats. M3's `sensei_api` enforces this correctly; `/decide` returned 422 on every non-trivial scenario.
 
-**Re-verdict:** the contract itself passed falsification. The *implementation* (`sensei_client` v0.3.1) did not comply with the contract it claimed to implement. Fixed in v0.3.2: all four confidence fields required, no silent defaults, no optional omission. Smoke test now passes 4/4 on M1 and M3.
+**Re-verdict (after request-side fix):** the contract passed falsification. The *implementation* (`sensei_client` v0.3.1) did not comply with the contract it claimed to implement. Fixed in v0.3.2: all four confidence fields required, no silent defaults, no optional omission.
 
-This outcome is cleaner than the paper verdict. An untested claim of contract adherence is exactly the failure mode an end-to-end smoke test is designed to surface. The test worked as intended.
+**Second drift, response side (v0.3.3):** After v0.3.2 unblocked the request, the smoke test surfaced a second, deeper mismatch: `SenseiDecision.from_response` in `sensei_client/types.py` decoded the `/decide` response as if it were flat (`data["adapter_id"]`, `data["escalate"]`, `data["trigger_score"]`, `data["fired_patterns"]`, `data["composition_strategy"]`). Contract v0.3 §4.1 specifies a nested envelope: `{decision, reasoning, trigger_cost, context_ref, advisor_prompt_mods}`. `adapter_id` lives at `context_ref.adapter_id`; `escalate` at `decision.escalate`; `effective_score`, `composition_strategy`, and `signals_fired` inside `reasoning`. The first call to `/decide` raised `KeyError: 'adapter_id'` — client asking for a key the contract never promised at the top level.
+
+This is the more structurally telling of the two bugs. The client wasn't just under-sending fields the contract requires; it was decoding a shape the contract doesn't define. The v0.3.1 client was authored against an imagined response shape, likely unit-tested against mocks matching that same imagined shape, and never exercised against a live contract-compliant server. That's how paper verdicts diverge from production truth.
+
+Fixed in v0.3.3: `SenseiDecision.from_response` now decodes the nested envelope per §4.1, extracting `adapter_id` from `context_ref`, `escalate` from `decision`, `trigger_score` from `reasoning.effective_score`, `fired_patterns` as `signal_name` extraction from `reasoning.signals_fired` objects, and preserving the whole `reasoning` block as `decision_trace` for Advisor-prompt construction. `trigger_cost`, `advisor_prompt_mods`, and non-adapter-id fields of `context_ref` are stashed in `extra` for forward compatibility.
+
+**Re-verdict (final):** the contract passed falsification across both request and response surfaces. The client had silently drifted from the contract in at least two structurally distinct ways. Both are now fixed and the mismatch was only caught because an end-to-end smoke test was run against a live contract-compliant server. This is the value of integration testing over unit testing: unit tests encode the author's assumptions; integration tests encode the world's actual shape.
+
+The lesson is contract-level, not bug-level: **unit tests against self-authored mocks cannot falsify a claim of contract adherence.** Any future client release MUST pass a live smoke test against M3 (or an equivalent contract-compliant server) before the adherence claim is made. A mock-tested client that says "I implement contract v0.3" is asserting a hypothesis it has not actually tested.
 
 ## What held (the important negatives)
 

@@ -74,9 +74,23 @@ class WorkerTask:
 class SenseiDecision:
     """Parsed /decide response.
 
-    Mirrors v0.3 contract §3.4. Additional fields returned by SENSEI are
-    stashed in `extra` so clients aren't broken by forward-compatible
-    additions.
+    Mirrors v0.3 contract §4.1 response envelope:
+
+        { "decision": { "escalate": bool, "confidence": float },
+          "reasoning": { "signals_fired": [...], "composition_strategy": str,
+                         "threshold_applied": float, "effective_score": float,
+                         "override_applied": bool },
+          "trigger_cost": { "tokens_spent": int, "wall_time_ms": int,
+                            "budget_ceiling": int },
+          "context_ref":  { "memory_version": str, "summary_hash": str,
+                            "window_end_turn": int, "adapter_id": str },
+          "advisor_prompt_mods": {...} | null }
+
+    This dataclass flattens the above into the fields most callers branch
+    on. The full reasoning block is preserved verbatim in decision_trace
+    for observability and Advisor-prompt construction. trigger_cost,
+    context_ref (minus adapter_id), and advisor_prompt_mods are stashed
+    in `extra` so additions remain forward-compatible.
     """
 
     adapter_id: str
@@ -89,22 +103,41 @@ class SenseiDecision:
 
     @classmethod
     def from_response(cls, data: Dict[str, Any]) -> "SenseiDecision":
-        known = {
-            "adapter_id",
-            "escalate",
-            "trigger_score",
-            "fired_patterns",
-            "composition_strategy",
-            "decision_trace",
+        """Decode the nested /decide response envelope per contract v0.3 §4.1.
+
+        Tolerant of missing optional sub-blocks (server-side contract
+        evolution, legacy proxies, etc.) but strict on the structural
+        contract: `decision`, `reasoning`, and `context_ref` MUST be
+        present as dicts.
+        """
+        decision_block = data.get("decision") or {}
+        reasoning_block = data.get("reasoning") or {}
+        context_ref = data.get("context_ref") or {}
+
+        signals_fired = reasoning_block.get("signals_fired") or []
+        fired_patterns = tuple(
+            s.get("signal_name", "") for s in signals_fired if isinstance(s, dict)
+        )
+
+        extra = {
+            k: v
+            for k, v in data.items()
+            if k not in ("decision", "reasoning", "context_ref")
         }
-        extra = {k: v for k, v in data.items() if k not in known}
+        # Preserve context_ref bits other than adapter_id for observability.
+        context_ref_extra = {
+            k: v for k, v in context_ref.items() if k != "adapter_id"
+        }
+        if context_ref_extra:
+            extra["context_ref"] = context_ref_extra
+
         return cls(
-            adapter_id=data["adapter_id"],
-            escalate=bool(data["escalate"]),
-            trigger_score=float(data.get("trigger_score", 0.0)),
-            fired_patterns=tuple(data.get("fired_patterns") or ()),
-            composition_strategy=str(data.get("composition_strategy", "")),
-            decision_trace=dict(data.get("decision_trace") or {}),
+            adapter_id=str(context_ref.get("adapter_id", "")),
+            escalate=bool(decision_block.get("escalate", False)),
+            trigger_score=float(reasoning_block.get("effective_score", 0.0)),
+            fired_patterns=fired_patterns,
+            composition_strategy=str(reasoning_block.get("composition_strategy", "")),
+            decision_trace=dict(reasoning_block),
             extra=extra,
         )
 

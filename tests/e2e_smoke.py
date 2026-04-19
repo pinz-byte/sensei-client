@@ -6,7 +6,7 @@ Registers the HERALD adapter (via sensei_client), then walks four
 scenarios that together cover the contract v0.3 surface.
 
 Requirements:
-    pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.2"
+    pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.3"
 
 Environment variables:
     SENSEI_API_URL           http(s) URL of M3's SENSEI service
@@ -50,7 +50,7 @@ try:
 except ImportError as e:
     print(f"[FATAL] sensei_client not installed: {e}", file=sys.stderr)
     print(
-        '  Install with: pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.2"',
+        '  Install with: pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.3"',
         file=sys.stderr,
     )
     sys.exit(2)
