@@ -6,7 +6,7 @@ Registers the HERALD adapter (via sensei_client), then walks four
 scenarios that together cover the contract v0.3 surface.
 
 Requirements:
-    pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.3"
+    pip install "sensei_client[advisor] @ git+https://github.com/pinz-byte/sensei-client.git@v0.3.4"
 
 Environment variables:
     SENSEI_API_URL           http(s) URL of M3's SENSEI service
@@ -50,7 +50,8 @@ try:
 except ImportError as e:
     print(f"[FATAL] sensei_client not installed: {e}", file=sys.stderr)
     print(
-        '  Install with: pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.3"',
+        '  Install with: pip install "sensei_client[advisor] @ '
+        'git+https://github.com/pinz-byte/sensei-client.git@v0.3.4"',
         file=sys.stderr,
     )
     sys.exit(2)
@@ -66,6 +67,33 @@ def _smoke_materiality(worker_output: str) -> float:
     HERALD's production materiality is tested in its own repo.
     """
     return 0.80 if "ESCALATE_ME" in (worker_output or "") else 0.10
+
+
+# ---------------------------------------------------------------------------
+# Deliberately-broken advisor client — used by scenario 2 to guarantee
+# the fail-safe path regardless of whether anthropic is installed or
+# ANTHROPIC_API_KEY is set in the environment.
+# ---------------------------------------------------------------------------
+class _BrokenAdvisorClient:
+    """Stub advisor client whose .messages.create() always raises.
+
+    Pre-v0.3.4, invoke_advisor failed at `import anthropic` when the
+    [advisor] extra wasn't installed — the fail-safe caught it and
+    scenario 2 passed incidentally. Now that [advisor] is the default
+    install, we need an explicit way to exercise the fail-safe without
+    depending on the environment (no ANTHROPIC_API_KEY, no network, no
+    live model roundtrip).
+    """
+
+    class _Messages:
+        @staticmethod
+        def create(*args, **kwargs):
+            raise RuntimeError(
+                "smoke test: advisor deliberately unavailable to exercise "
+                "the fail-safe path"
+            )
+
+    messages = _Messages()
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +156,10 @@ def scenario_2_escalate_trigger(
         materiality_fn=_smoke_materiality,
         config=config,
         client=client,
-        advisor_client=None,
+        advisor_client=_BrokenAdvisorClient(),
         fail_safe_on_advisor_error=True,
     )
-    # With no advisor_client, the guard should NOT ship (fail-safe path).
+    # Broken advisor → fail-safe path → guard should NOT ship.
     ok = (
         result.should_ship is False
         and result.decision is not None

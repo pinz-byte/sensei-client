@@ -64,7 +64,7 @@ HERALD's adoption in `herald_sensei/` is the worked example — copy that direct
 
 - Contract **v0.3** — shipped from M1 to M3 (the SENSEI builder station).
 - Architectural advisory — shipped, acted on, CI check live, 176 tests passing on SENSEI (M3).
-- `sensei_client` — v0.3.0. Authored on M1. Syntax-verified, smoke-tested through four guard scenarios (proceed, 404 retry, fail-open, fail-safe).
+- `sensei_client` — v0.3.4. Authored on M1. Cross-station verified (M1 ↔ M3) via live smoke test against M3's SENSEI service. Installs the `[advisor]` extra by default; `ANTHROPIC_API_KEY` required at venture runtime.
 - `herald_sensei` — integration glue complete. Wire-up into HERALD's Worker call sites pending HERALD source from whichever station hosts HERALD.
 - **Distribution channel** — pending decision. Default assumption: shared git repo so consuming stations do `pip install git+<url>`. Until that exists, consumers install from a wheel artifact or path.
 

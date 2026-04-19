@@ -40,7 +40,7 @@ Three distribution paths, in rough order of preference.
 Once M1 has pushed to a shared repo this is the one-liner:
 
 ```bash
-pip install "git+<m1-repo-url>@v0.3.0#egg=sensei_client"
+pip install "git+<m1-repo-url>@v0.3.4#egg=sensei_client"
 ```
 
 Pin a tag or SHA. Do not install from `main` into a venture runtime — SENSEI contract bumps rely on coordinated deploys.
@@ -54,13 +54,13 @@ M1 builds a wheel and publishes it to a shared drop (S3, shared drive, private i
 cd "/path/on/M1/SENSEI M1"
 python -m pip install build
 python -m build --wheel
-# → dist/sensei_client-0.3.0-py3-none-any.whl
+# → dist/sensei_client-0.3.4-py3-none-any.whl
 ```
 
 Then the consumer copies the `.whl` across and installs:
 
 ```bash
-pip install /path/to/sensei_client-0.3.0-py3-none-any.whl
+pip install /path/to/sensei_client-0.3.4-py3-none-any.whl
 ```
 
 ### 1C — Editable install from a local copy (M1 only, or a mounted volume)
@@ -97,7 +97,7 @@ python3 -c "import sensei_client; print(sensei_client.__version__)"
 Expected output:
 
 ```
-0.3.0
+0.3.4
 ```
 
 If you hit `ModuleNotFoundError`, the install was run in a different Python environment than the one you're testing in. Activate your venv and re-check:
@@ -118,10 +118,10 @@ Most ventures escalate at least some outputs. To enable the Advisor call, add th
 
 ```bash
 # Path 1A (git)
-pip install "sensei_client[advisor] @ git+<m1-repo-url>@v0.3.0"
+pip install "sensei_client[advisor] @ git+<m1-repo-url>@v0.3.4"
 
 # Path 1B (wheel)
-pip install "/path/to/sensei_client-0.3.0-py3-none-any.whl[advisor]"
+pip install "/path/to/sensei_client-0.3.4-py3-none-any.whl[advisor]"
 
 # Path 1C (editable, on a station with the source tree)
 pip install -e ".[advisor]"
@@ -175,7 +175,7 @@ print('public API reachable')
 Expected:
 
 ```
-sensei_client 0.3.0
+sensei_client 0.3.4
 public API reachable
 ```
 

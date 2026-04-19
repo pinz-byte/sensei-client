@@ -183,6 +183,48 @@ To tighten either default, pass `fail_open_on_unreachable=False` or `fail_safe_o
 
 ---
 
+## Wiring the Advisor (real ventures)
+
+The smoke test at `tests/e2e_smoke.py` passes a deliberately-broken advisor stub to exercise the fail-safe path without depending on network or API keys. Real ventures wire the genuine Anthropic client:
+
+```python
+import os
+import anthropic
+from sensei_client import SenseiConfig, SenseiClient, WorkerTask, check_and_escalate
+
+# One Anthropic client per process is sufficient — thread-safe and reused
+# across calls. Constructing it requires ANTHROPIC_API_KEY in the env.
+ADVISOR_CLIENT = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+
+def run_worker(...):
+    task = WorkerTask(...)
+    result = check_and_escalate(
+        task=task,
+        materiality_fn=compute_my_venture_materiality,
+        config=CONFIG,
+        client=CLIENT,
+        advisor_client=ADVISOR_CLIENT,   # shared, reused
+    )
+```
+
+**Installation:** `sensei_client[advisor]` pulls in the `anthropic` SDK. The `setup/bootstrap.sh` script installs this extra by default. Verify with:
+
+```bash
+python -c "import anthropic; print(anthropic.__version__)"
+```
+
+**Environment:** `ANTHROPIC_API_KEY` must be exported wherever the venture runtime lives. If your station was bootstrapped via `setup/bootstrap.sh`, the key is already written to `.env` (mode 600). Source it:
+
+```bash
+set -a; source .env; set +a
+```
+
+For production: inject the key through your platform's secret manager (systemd `EnvironmentFile`, Kubernetes secret, Firebase Functions env config, 1Password Connect, whatever you use). Do **not** commit `.env` — it is gitignored for a reason.
+
+**If `ANTHROPIC_API_KEY` is missing** at escalation time, `anthropic.Anthropic()` raises during construction. The guard's `fail_safe_on_advisor_error=True` (the default) catches this and returns `ESCALATE` — human review, safer than silent skip.
+
+---
+
 ## Per-call overrides
 
 Most callers use the library with defaults. Three knobs matter when you need more control:

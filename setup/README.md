@@ -17,7 +17,7 @@ cd /path/to/this/repo   # wherever you clone sensei-client
 ./setup/bootstrap.sh <M1|M2|M3>
 ```
 
-The script asks for M3's reachable URL (M1/M2 only), creates a venv, installs `sensei_client` from the v0.3.0 tag, writes `.env`, and runs the smoke test. Idempotent — safe to re-run.
+The script asks for M3's reachable URL (M1/M2 only), creates a venv, installs `sensei_client` from the v0.3.4 tag, writes `.env`, and runs the smoke test. Idempotent — safe to re-run.
 
 ## What you end up with
 
