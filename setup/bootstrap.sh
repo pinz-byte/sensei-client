@@ -7,7 +7,7 @@
 # Behavior:
 #   - Verifies Python >= 3.9.
 #   - Creates/refreshes ./venv.
-#   - Installs sensei_client from the v0.3.0 tag (public repo).
+#   - Installs sensei_client from the v0.3.2 tag (public repo).
 #   - Writes ./.env with SENSEI_API_URL, SENSEI_STATION, SENSEI_ADAPTER_SPEC.
 #   - Runs tests/e2e_smoke.py at the end to verify wiring (requires M3 reachable).
 #
@@ -97,8 +97,8 @@ if [[ "$STATION" == "M1" ]]; then
   echo "[bootstrap] installing sensei_client editable from local tree..."
   pip install --quiet -e .
 else
-  echo "[bootstrap] installing sensei_client v0.3.0 from GitHub..."
-  pip install --quiet "git+https://github.com/pinz-byte/sensei-client.git@v0.3.0"
+  echo "[bootstrap] installing sensei_client v0.3.2 from GitHub..."
+  pip install --quiet "git+https://github.com/pinz-byte/sensei-client.git@v0.3.2"
 fi
 
 INSTALLED_VER="$(python -c 'import sensei_client; print(sensei_client.__version__)')"

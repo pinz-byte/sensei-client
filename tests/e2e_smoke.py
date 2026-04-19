@@ -6,7 +6,7 @@ Registers the HERALD adapter (via sensei_client), then walks four
 scenarios that together cover the contract v0.3 surface.
 
 Requirements:
-    pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.0"
+    pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.2"
 
 Environment variables:
     SENSEI_API_URL           http(s) URL of M3's SENSEI service
@@ -50,7 +50,7 @@ try:
 except ImportError as e:
     print(f"[FATAL] sensei_client not installed: {e}", file=sys.stderr)
     print(
-        '  Install with: pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.0"',
+        '  Install with: pip install "git+https://github.com/pinz-byte/sensei-client.git@v0.3.2"',
         file=sys.stderr,
     )
     sys.exit(2)
@@ -80,6 +80,9 @@ def scenario_1_proceed(client: SenseiClient, config: SenseiConfig) -> bool:
         session_id="smoke-sess",
         turn_index=1,
         confidence_score=0.90,
+        confidence_coverage=0.90,
+        confidence_grounding=0.90,
+        confidence_novelty=0.90,
     )
     result = check_and_escalate(
         task,
@@ -90,9 +93,9 @@ def scenario_1_proceed(client: SenseiClient, config: SenseiConfig) -> bool:
     )
     expected_ship = True
     actual_ship = result.should_ship
-    ok = expected_ship == actual_ship and result.advisor_result is None
+    ok = expected_ship == actual_ship and result.advisor is None
     print(
-        f"  [1] proceed:       ship={actual_ship} advisor_called={result.advisor_result is not None}  "
+        f"  [1] proceed:       ship={actual_ship} advisor_called={result.advisor is not None}  "
         f"{'PASS' if ok else 'FAIL'}"
     )
     return ok
@@ -116,6 +119,9 @@ def scenario_2_escalate_trigger(
         session_id="smoke-sess",
         turn_index=2,
         confidence_score=0.30,
+        confidence_coverage=0.30,
+        confidence_grounding=0.30,
+        confidence_novelty=0.30,
     )
     result = check_and_escalate(
         task,
@@ -160,6 +166,9 @@ def scenario_3_404_reregister(
         session_id="smoke-sess",
         turn_index=3,
         confidence_score=0.90,
+        confidence_coverage=0.90,
+        confidence_grounding=0.90,
+        confidence_novelty=0.90,
     )
     try:
         result = check_and_escalate(
@@ -195,6 +204,9 @@ def scenario_4_fail_open(config: SenseiConfig) -> bool:
         session_id="smoke-sess",
         turn_index=4,
         confidence_score=0.85,
+        confidence_coverage=0.85,
+        confidence_grounding=0.85,
+        confidence_novelty=0.85,
     )
     with SenseiClient(bad_config) as bad_client:
         try:

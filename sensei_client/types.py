@@ -33,10 +33,13 @@ class WorkerTask:
     MAY extend this via subclassing; the guard only reads the fields
     below.
 
-    confidence_* fields are optional because some Workers emit only a
-    scalar confidence_score; others emit structured {coverage, grounding,
-    novelty}. The adapter's StructuralMatcher patterns decide what's
-    required on the SENSEI side.
+    All four confidence_* fields are REQUIRED per contract v0.3 §3
+    (TaskPayload schema, lines 120–123). If a Worker emits only a scalar
+    confidence_score, the venture's wiring layer is responsible for
+    computing, imputing, or explicitly defaulting the three decomposed
+    fields before constructing WorkerTask. Semantic authority lives in
+    the venture, not in the transport — the client does not silently
+    default.
     """
 
     task_id: str
@@ -45,9 +48,9 @@ class WorkerTask:
     session_id: str
     turn_index: int
     confidence_score: float
-    confidence_coverage: Optional[float] = None
-    confidence_grounding: Optional[float] = None
-    confidence_novelty: Optional[float] = None
+    confidence_coverage: float
+    confidence_grounding: float
+    confidence_novelty: float
 
     def to_decide_payload(self, materiality_value: Optional[float]) -> Dict[str, Any]:
         """Serialize to the POST /decide body shape."""
@@ -58,13 +61,10 @@ class WorkerTask:
             "session_id": self.session_id,
             "turn_index": self.turn_index,
             "confidence_score": self.confidence_score,
+            "confidence_coverage": self.confidence_coverage,
+            "confidence_grounding": self.confidence_grounding,
+            "confidence_novelty": self.confidence_novelty,
         }
-        if self.confidence_coverage is not None:
-            body["confidence_coverage"] = self.confidence_coverage
-        if self.confidence_grounding is not None:
-            body["confidence_grounding"] = self.confidence_grounding
-        if self.confidence_novelty is not None:
-            body["confidence_novelty"] = self.confidence_novelty
         if materiality_value is not None:
             body["materiality_value"] = materiality_value
         return body

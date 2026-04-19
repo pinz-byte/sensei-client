@@ -134,7 +134,13 @@ def run_worker(task_id, session_id, turn_index, prompt):
         worker_model="claude-haiku-4-5-20251001",
         session_id=session_id,
         turn_index=turn_index,
+        # Contract v0.3 §3: all four confidence fields required.
+        # If your Worker emits only a scalar, decompose or default in
+        # the wiring layer — do NOT pass None.
         confidence_score=confidence,
+        confidence_coverage=confidence,
+        confidence_grounding=confidence,
+        confidence_novelty=confidence,
     )
 
     result = check_and_escalate(
@@ -230,6 +236,9 @@ def test_guard_flow():
         session_id="s1",
         turn_index=0,
         confidence_score=0.9,
+        confidence_coverage=0.9,
+        confidence_grounding=0.9,
+        confidence_novelty=0.9,
     )
 
     result = check_and_escalate(

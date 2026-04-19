@@ -24,9 +24,17 @@ Deliverables:
 
 ## Verdict
 
-**Contract v0.3 held.** No clauses required amendment; no fields needed addition; no invariants were violated; no sensei_client surface needed modification.
+**Contract v0.3 held. The shipped client did not.**
 
-The four-step integration from `sensei_client/INTEGRATION.md` ran as described. Spec authored in one pass. Materiality function written in under 50 lines of pure, offline, deterministic Python. No server-side code changes on M3 required. Same `check_and_escalate` entry point, same `SenseiConfig.from_spec_file` loader, same registration semantics.
+Initial analytical pass: no clauses required amendment; no fields needed addition; no invariants were violated. The four-step integration from `sensei_client/INTEGRATION.md` ran as described on paper. Spec authored in one pass. Materiality function written in under 50 lines of pure, offline, deterministic Python. Same `check_and_escalate` entry point, same `SenseiConfig.from_spec_file` loader, same registration semantics.
+
+**Then the end-to-end smoke test ran against a live M3 SENSEI service and contradicted the paper verdict.**
+
+`sensei_client/types.py` in v0.3.1 made three of the four contract-required confidence fields `Optional[float] = None` and silently omitted them from the `/decide` wire payload when the caller didn't supply them. Contract v0.3 §3 (`SENSEI_Contract_v0.3.md` lines 120–123) specifies all four as required floats. M3's `sensei_api` enforces this correctly; `/decide` returned 422 on every non-trivial scenario.
+
+**Re-verdict:** the contract itself passed falsification. The *implementation* (`sensei_client` v0.3.1) did not comply with the contract it claimed to implement. Fixed in v0.3.2: all four confidence fields required, no silent defaults, no optional omission. Smoke test now passes 4/4 on M1 and M3.
+
+This outcome is cleaner than the paper verdict. An untested claim of contract adherence is exactly the failure mode an end-to-end smoke test is designed to surface. The test worked as intended.
 
 ## What held (the important negatives)
 
