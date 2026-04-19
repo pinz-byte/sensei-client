@@ -1,0 +1,128 @@
+{
+  "adapter_id": "avt_extractor.v1",
+  "contract_version": "0.3",
+  "hard_task_registry": [
+    {
+      "id": "extraction_volume_collapse",
+      "description": "Worker output reports a row count dramatically below the source's historical expectation. Signals the scraper may have silently broken (site changed, selector stale, auth wall moved) and produced a 'successful' run that is actually truncated.",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "volume collapse",
+          "extraction truncated",
+          "rows_extracted below",
+          "below_expected_by",
+          "row count anomaly",
+          "scraper may have broken silently"
+        ]
+      },
+      "base_weight": 0.85,
+      "materiality_boost": 0.30
+    },
+    {
+      "id": "schema_drift_detected",
+      "description": "Worker output reports schema-level failures — missing required fields, type mismatches, or structural changes in the upstream site. A single field drifting breaks normalization for the entire batch.",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "schema drift",
+          "schema_failures",
+          "schema validation failed",
+          "missing required fields",
+          "field type mismatch",
+          "unexpected field order",
+          "listing shape changed"
+        ]
+      },
+      "base_weight": 0.80,
+      "materiality_boost": 0.25
+    },
+    {
+      "id": "price_outlier_spike",
+      "description": "Worker output reports an unusually high concentration of price outliers (>3σ from the make/model/year/market baseline). Could indicate site listing junk data, currency misparse, or price-extraction regex drift.",
+      "matcher": {
+        "type": "regex",
+        "patterns": [
+          "\\bprice_outlier_ratio\\b",
+          "\\boutliers?\\s*[:=]\\s*\\d+",
+          "\\bprice\\s+(?:distribution\\s+)?shift\\b",
+          "\\bcurrency\\s+misparse\\b"
+        ]
+      },
+      "base_weight": 0.75,
+      "materiality_boost": 0.25
+    },
+    {
+      "id": "antibot_escalation",
+      "description": "Scraper encountered captcha, rate-limit walls, or explicit anti-bot challenges. Extraction integrity is in question: may have fallen back to degraded selectors, evaded detection, or silently truncated pagination.",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "captcha",
+          "antibot",
+          "anti-bot",
+          "rate limited",
+          "rate-limit wall",
+          "scraper blocked",
+          "fallback to DOM",
+          "cloudflare challenge"
+        ]
+      },
+      "base_weight": 0.65,
+      "materiality_boost": 0.20
+    },
+    {
+      "id": "novel_source",
+      "description": "Source has fewer than five successful historical runs. Confidence in the source's structural stability is low; outlier metrics cannot be trusted against a short baseline.",
+      "matcher": {
+        "type": "regex",
+        "patterns": [
+          "\\bsource_runs_completed\\s*[:=]\\s*[0-4]\\b",
+          "\\bfirst\\s+(?:successful\\s+)?run\\b",
+          "\\bnovel\\s+source\\b",
+          "\\bnewly\\s+added\\s+source\\b"
+        ]
+      },
+      "base_weight": 0.60,
+      "materiality_boost": 0.20
+    },
+    {
+      "id": "canonical_write",
+      "description": "Batch is being written to the canonical listings table (the commit point consumed by Subastop, CarMatch, and downstream valuation models). This is the irreversibility gate: post-write, consumers will have read and cached the data.",
+      "matcher": {
+        "type": "regex",
+        "patterns": [
+          "\\bcanonical_listings\\b",
+          "\\bcommit(?:ting)?\\s+to\\s+canonical\\b",
+          "\\bwrit(?:e|ing)\\s+to\\s+canonical\\b",
+          "\\bpromoting?\\s+(?:batch|listings)\\s+to\\s+prod\\b"
+        ]
+      },
+      "base_weight": 0.90,
+      "materiality_boost": 0.35
+    },
+    {
+      "id": "cross_market_write",
+      "description": "Extraction is being written across market/region boundaries (e.g., a Peru scraper's output flowing into the Colombia listings partition). Cross-region writes break the one-market-per-scraper assumption and are a frequent root cause of valuation-model drift.",
+      "matcher": {
+        "type": "keyword",
+        "any_of": [
+          "cross-market write",
+          "cross-region",
+          "foreign market partition",
+          "market boundary violation",
+          "wrong market code"
+        ]
+      },
+      "base_weight": 0.85,
+      "materiality_boost": 0.30
+    }
+  ],
+  "trigger_threshold": 0.40,
+  "trigger_budget_tokens": 512,
+  "composition_strategy": "weighted_sum",
+  "materiality_floor": 0.0,
+  "advisor_model": "claude-opus-4-7",
+  "advisor_per_session_cap": 6,
+  "advisor_prompt_template": "You are a senior data-integrity specialist reviewing a vehicle-listing extraction run that the AVT Extractor's Worker has flagged for review. AVT feeds the canonical listings table consumed by Subastop, CarMatch, and downstream valuation models — a bad batch admitted here propagates as stale prices, phantom inventory, and incorrect comparables for days before it can be fully rolled back.\n\nYou will receive the Worker's extraction envelope (rows extracted, expected baseline, schema failures, price outliers, source metadata) and the signals that fired. Decide whether the batch should be committed to canonical, held for human review, or rejected outright. Prioritize: (1) extraction integrity — did the scraper actually work, or silently truncate; (2) data quality — how many listings will propagate bad prices; (3) source trust — is this source established enough to believe its edge cases; (4) reversibility — how many downstream consumers will have read this batch before a rollback could land.\n\nEnd your response with exactly one verdict token on its own line — APPROVE, REJECT, or ESCALATE — followed by a reasoning paragraph. ESCALATE means 'a human must look at this before it ships to canonical.'"
+}
